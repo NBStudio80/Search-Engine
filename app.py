@@ -100,26 +100,54 @@ def home():
     </html>
     '''
 
+
 @app.route("/search")
 def search_page():
     q = request.args.get("q", "")
     results = search_mega_engine(q)
-    
-    html = f'<h2>Results for "{q}"</h2><div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">'
-    
-    if not results:
-        html += '<p>Data generating... please refresh after 10 seconds.</p>'
-        
-    for r in results:
-        html += f'''
-        <div style="background:white; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
-            <small style="color:#e84118;">{r[1]}</small>
-            <h3>{r[2]}</h3>
-            <p>{r[3][:100]}...</p>
-            <a href="{r[5]}" target="_blank">View More</a>
-        </div>
-        '''
-    return render_template_string(html + "</div>")
 
+    html_output = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{q} - Mega Search</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 20px; color: #202124; background: #fff; }}
+            .header {{ display: flex; align-items: center; border-bottom: 1px solid #dfe1e5; padding-bottom: 20px; margin-bottom: 20px; }}
+            .search-bar {{ padding: 12px 25px; width: 400px; border-radius: 25px; border: 1px solid #dfe1e5; outline: none; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }}
+            
+            /* গুগল স্টাইল রেজাল্ট কার্ড */
+            .result-container {{ max-width: 650px; }}
+            .result-item {{ margin-bottom: 25px; }}
+            .result-source {{ font-size: 14px; color: #202124; margin-bottom: 4px; }}
+            .result-title {{ font-size: 20px; color: #1a0dab; text-decoration: none; display: block; margin-bottom: 4px; }}
+            .result-title:hover {{ text-decoration: underline; }}
+            .result-desc {{ font-size: 14px; color: #4d5156; line-height: 1.5; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h2 style="margin-right: 20px; color: #4285f4;">MegaEngine</h2>
+            <form action="/search" method="get">
+                <input type="text" name="q" class="search-bar" value="{q}">
+            </form>
+        </div>
+        
+        <div class="result-container">
+    '''
+
+    for r in results:
+        # r[1]=source, r[2]=title, r[3]=content, r[5]=url
+        html_output += f'''
+            <div class="result-item">
+                <div class="result-source">{r[1]}</div>
+                <a href="{r[5]}" class="result-title" target="_blank">{r[2]}</a>
+                <div class="result-desc">{r[3][:160]}...</div>
+            </div>
+        '''
+
+    html_output += "</div></body></html>"
+    return render_template_string(html_output)
+    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
