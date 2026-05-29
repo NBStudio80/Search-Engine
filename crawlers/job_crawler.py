@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 
 def job_crawl():
     print("[+] Job Crawler starting...")
-    # একটি ডেমো জব লিস্টিং পেজ
     url = "https://webscraper.io/test-sites/e-commerce/allinone/computers"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
@@ -14,16 +13,18 @@ def job_crawl():
         
         conn = sqlite3.connect("database/search.db")
         cur = conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS data (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, title TEXT, content TEXT, url TEXT UNIQUE)")
+        # টেবিল নাম mega_search করা হয়েছে
+        cur.execute("""CREATE TABLE IF NOT EXISTS mega_search (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            category TEXT, source TEXT, title TEXT, content TEXT, image_url TEXT, target_url TEXT UNIQUE)""")
         
-        # ডেমো ডাটাকে "Job" হিসেবে ডাটাবেজে সাজিয়ে নেওয়া
         for item in soup.find_all("div", class_="thumbnail")[:5]:
             title = item.find("a", class_="title").text.strip() + " Developer Required"
             desc = "We are looking for an expert. Requirements: Python, Flask, Scrapy, SQLite."
             link = "https://webscraper.io" + item.find("a", class_="title")["href"] + "/apply"
             
-            cur.execute("INSERT OR IGNORE INTO data (type, title, content, url) VALUES (?, ?, ?, ?)",
-                        ("job", title, desc, link))
+            cur.execute("INSERT OR IGNORE INTO mega_search (category, source, title, content, image_url, target_url) VALUES (?, ?, ?, ?, ?, ?)",
+                        ("job", "webscraper.io", title, desc, "https://via.placeholder.com/150", link))
             
         conn.commit()
         conn.close()
