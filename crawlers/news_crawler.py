@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 def news_crawl():
     print("[+] News Crawler starting...")
-    url = "https://quotes.toscrape.com/" # স্ক্র্যাপিং ফ্রেন্ডলি সাইট
+    url = "https://quotes.toscrape.com/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     
     try:
@@ -14,8 +14,9 @@ def news_crawl():
         conn = sqlite3.connect("database/search.db")
         cur = conn.cursor()
         
-        # টেবিল না থাকলে তৈরি করবে
-        cur.execute("CREATE TABLE IF NOT EXISTS data (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, title TEXT, content TEXT, url TEXT UNIQUE)")
+        cur.execute("""CREATE TABLE IF NOT EXISTS mega_search (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            category TEXT, source TEXT, title TEXT, content TEXT, image_url TEXT, target_url TEXT UNIQUE)""")
         
         for quotes in soup.find_all("div", class_="quote"):
             text = quotes.find("span", class_="text").text
@@ -23,8 +24,8 @@ def news_crawl():
             title = f"Quote by {author}"
             link = f"https://quotes.toscrape.com/author/{author.replace(' ', '-')}"
             
-            cur.execute("INSERT OR IGNORE INTO data (type, title, content, url) VALUES (?, ?, ?, ?)",
-                        ("news", title, text, link))
+            cur.execute("INSERT OR IGNORE INTO mega_search (category, source, title, content, image_url, target_url) VALUES (?, ?, ?, ?, ?, ?)",
+                        ("news", "quotes.toscrape.com", title, text, "https://via.placeholder.com/150", link))
             
         conn.commit()
         conn.close()
@@ -34,5 +35,3 @@ def news_crawl():
 
 if __name__ == "__main__":
     news_crawl()
-
-
