@@ -15,16 +15,49 @@ DB_PATH = os.path.join(os.getcwd(), "search.db")
 # ১. গ্লোবাল মেগা ক্রলার (অটো-ইনডেক্সিং)
 # ==========================================
 def global_background_crawl(query):
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-        # আপনার মূল ক্রলিং সোর্সগুলো এখানে দেওয়া আছে
-        sources = [
-            {"name": "Daraz (BD)", "cat": "product", "url": f"https://www.daraz.com.bd/catalog/?q={query}&aff_id=163322452"},
-            {"name": "Wikipedia", "cat": "info", "url": f"https://en.wikipedia.org/wiki/{query}"},
-            {"name": "BBC News", "cat": "news", "url": f"https://www.bbc.com/search?q={query}"}
-        ]
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 
-        for source in sources:
+    # আপনার দেওয়া তালিকা অনুযায়ী আপডেট করা সোর্স লিস্ট
+    sources = [
+        # --- নিউজ ও মিডিয়া ---
+        {"name": "BBC News", "cat": "news", "url": f"https://www.bbc.com/search?q={query}"},
+        {"name": "CNN", "cat": "news", "url": f"https://edition.cnn.com/search?q={query}"},
+        {"name": "Reuters", "cat": "news", "url": f"https://www.reuters.com/site-search/?query={query}"},
+        {"name": "AP News", "cat": "news", "url": f"https://apnews.com/search?q={query}"},
+        {"name": "NY Times", "cat": "news", "url": f"https://www.nytimes.com/search?query={query}"},
+        {"name": "Prothom Alo", "cat": "news", "url": f"https://www.prothomalo.com/search?q={query}"},
+        {"name": "Somoy TV", "cat": "news", "url": f"https://www.somoynews.tv/search?q={query}"},
+        {"name": "Jamuna TV", "cat": "news", "url": f"https://www.jamuna.tv/?s={query}"},
+        {"name": "NDTV", "cat": "news", "url": f"https://www.ndtv.com/search?q={query}"},
+        {"name": "Aaj Tak", "cat": "news", "url": f"https://www.aajtak.in/topic/{query}"},
+        {"name": "Times of India", "cat": "news", "url": f"https://timesofindia.indiatimes.com/topic/{query}"},
+        {"name": "Al Jazeera", "cat": "news", "url": f"https://www.aljazeera.com/search/{query}"},
+        {"name": "Fox News", "cat": "news", "url": f"https://www.foxnews.com/search-results/search?q={query}"},
+        {"name": "Daily Mail", "cat": "news", "url": f"https://www.dailymail.co.uk/home/search.html?sel=site&searchFTS={query}"},
+        {"name": "The Guardian", "cat": "news", "url": f"https://www.theguardian.com/search?q={query}"},
+        {"name": "BuzzFeed", "cat": "news", "url": f"https://www.buzzfeed.com/search?q={query}"},
+        {"name": "The Verge", "cat": "news", "url": f"https://www.theverge.com/search?q={query}"},
+
+        # --- ই-কমার্স ---
+        {"name": "Amazon", "cat": "product", "url": f"https://www.amazon.com/s?k={query}"},
+        {"name": "eBay", "cat": "product", "url": f"https://www.ebay.com/sch/i.html?_nkw={query}"},
+        {"name": "AliExpress", "cat": "product", "url": f"https://www.aliexpress.com/w/wholesale-{query}.html"},
+        {"name": "Daraz (BD)", "cat": "product", "url": f"https://www.daraz.com.bd/catalog/?q={query}&aff_id=163322452"},
+        {"name": "Rokomari", "cat": "product", "url": f"https://www.rokomari.com/search?term={query}"},
+        {"name": "Chaldal", "cat": "product", "url": f"https://chaldal.com/search/{query}"},
+        {"name": "Flipkart", "cat": "product", "url": f"https://www.flipkart.com/search?q={query}"},
+        {"name": "Myntra", "cat": "product", "url": f"https://www.myntra.com/{query}"},
+        {"name": "Shopee", "cat": "product", "url": f"https://shopee.sg/search?keyword={query}"},
+        {"name": "Lazada", "cat": "product", "url": f"https://www.lazada.sg/catalog/?q={query}"},
+        {"name": "Noon", "cat": "product", "url": f"https://www.noon.com/search?q={query}"},
+        {"name": "Temu", "cat": "product", "url": f"https://www.temu.com/search_result.html?search_key={query}"},
+        {"name": "Shein", "cat": "product", "url": f"https://www.shein.com/pdsearch/{query}/"}
+    ]
+
+    # এখন আপনার আগের লজিক (লুপ, ডাটাবেজ ইনসার্ট) এখানে বসিয়ে দিন
+    for source in sources:
+        # ... (আপনার ইনসার্ট লজিক)
+
             try:
                 res = requests.get(source["url"], headers=headers, timeout=6)
                 if res.status_code == 200:
