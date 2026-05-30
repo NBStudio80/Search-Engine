@@ -1,18 +1,36 @@
-from flask import Flask, request, render_template_string, redirect
+from flask import Flask, request, render_template_string
+import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# দারাজ এফিলিয়েট আইডি
-AFFILIATE_ID = "163322452"
+# আপনার এফিলিয়েট আইডি
+AFFILIATE_ID = "163322452" 
+
+def get_daraz_results(query):
+    # দারাজ থেকে সরাসরি ডেটা ফেচিং
+    url = f"https://www.daraz.com.bd/catalog/?q={query.replace(' ', '+')}"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    try:
+        res = requests.get(url, headers=headers, timeout=5)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        results = []
+        items = soup.select('.gridItem--Yd0NQ')[:6]
+        for item in items:
+            title = item.select_one('.title--wFj93 a').text
+            img = item.select_one('img')['src']
+            link = "https:" + item.select_one('a')['href']
+            results.append({'title': title, 'img': img, 'link': f"{link}?aff_id={AFFILIATE_ID}"})
+        return results
+    except: return []
 
 @app.route("/")
 def home():
     return '''
-    <body style="font-family:sans-serif; text-align:center; padding-top:100px;">
-        <h1>MegaEngine</h1>
+    <body style="font-family: Arial, sans-serif; text-align: center; padding-top: 150px;">
+        <h1 style="color: #4285f4; font-size: 50px;">MegaEngine</h1>
         <form action="/search" method="get">
-            <input type="text" name="q" placeholder="কী খুঁজছেন?" style="width:300px; padding:10px; border-radius:20px; border:1px solid #ccc;">
-            <button type="submit">Search</button>
+            <input type="text" name="q" placeholder="কী খুঁজছেন?" style="width: 400px; padding: 15px; border-radius: 25px; border: 1px solid #ddd; outline: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         </form>
     </body>
     '''
@@ -20,34 +38,49 @@ def home():
 @app.route("/search")
 def search_page():
     q = request.args.get("q", "")
-    if not q:
-        return redirect("/")
-
-    # এখানে আমরা সরাসরি ইউআরএল জেনারেট করছি, স্ক্র্যাপিং এরর এড়িয়ে চলার জন্য
-    daraz_search_url = f"https://www.daraz.com.bd/catalog/?q={q.replace(' ', '+')}&aff_id={AFFILIATE_ID}"
+    products = get_daraz_results(q)
     
     html = f'''
     <!DOCTYPE html>
     <html>
     <head><title>{q} - MegaEngine</title>
     <style>
-        body {{ font-family: arial; margin: 0; }}
-        .header {{ padding: 20px; border-bottom: 1px solid #ddd; }}
-        .btn {{ background: #ff6801; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; }}
-    </style>
-    </head>
+        body {{ font-family: arial; margin: 0; background: #fff; }}
+        .header {{ padding: 20px; border-bottom: 1px solid #dfe1e5; display: flex; align-items: center; }}
+        .search-input {{ width: 500px; padding: 10px 20px; border-radius: 25px; border: 1px solid #dfe1e5; }}
+        .main {{ display: flex; padding: 20px; gap: 40px; }}
+        .left {{ flex: 2; max-width: 650px; }}
+        .right {{ flex: 1; border: 1px solid #eee; padding: 20px; border-radius: 10px; height: 300px; }}
+        .card {{ display: flex; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }}
+        .card img {{ width: 100px; height: 100px; object-fit: contain; margin-right: 20px; }}
+        .footer {{ text-align: center; padding: 40px; border-top: 1px solid #ddd; margin-top: 50px; color: #5f6368; }}
+        .footer a {{ margin: 0 10px; color: #5f6368; text-decoration: none; }}
+    </style></head>
     <body>
         <div class="header">
-            <h2>MegaEngine: Results for "{q}"</h2>
+            <h2 style="margin-right: 20px; color: #4285f4;">MegaEngine</h2>
+            <form action="/search" method="get"><input type="text" name="q" class="search-input" value="{q}"></form>
         </div>
-        <div style="padding: 50px; text-align: center;">
-            <h3>আপনার সার্চ করা পণ্যের জন্য দারাজে ক্লিক করুন</h3>
-            <p>নিরাপত্তা সিস্টেমের কারণে আমরা সরাসরি ইমেজ দেখাতে পারছি না, তবে এই লিঙ্কে ক্লিক করলে আপনি সব রেজাল্ট পেয়ে যাবেন:</p>
-            <br>
-            <a href="{daraz_search_url}" class="btn" target="_blank">দারাজে রেজাল্ট দেখুন</a>
+        <div class="main">
+            <div class="left">
+    '''
+    for p in products:
+        html += f'''
+            <div class="card">
+                <img src="{p['img']}">
+                <div><a href="{p['link']}" style="font-size:18px; color:#1a0dab; text-decoration:none;" target="_blank">{p['title']}</a></div>
+            </div>
+        '''
+    html += '''
+            </div>
+            <div class="right"><h3>Info Panel</h3><p>Daraz Shopping results.</p></div>
         </div>
-    </body>
-    </html>
+        <div class="footer">
+            <a href="#">Home</a> | <a href="#">About-Us</a> | <a href="#">Contact-Us</a><br>
+            <a href="#">Privacy Policy</a> | <a href="#">Terms & Conditions</a><br>
+            <a href="#">Disclaimer</a> | <a href="#">Sitemap</a>
+        </div>
+    </body></html>
     '''
     return render_template_string(html)
 
