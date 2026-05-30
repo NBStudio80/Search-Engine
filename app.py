@@ -88,20 +88,58 @@ def home():
 @app.route("/search")
 def search_page():
     q = request.args.get("q", "")
-    results = search_mega_engine(q)
-    
-    html = f'<h2>Results for "{q}"</h2><div style="max-width:700px; margin:auto;">'
-    if not results:
-        html += '<p>Searching online... please wait 10 seconds and refresh.</p>'
-    
+    results = search_mega_engine(q) # এটি আপনার ডাটাবেজ থেকে সব ডেটা আনবে
+
+    html_output = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>{q} - Mega Search</title>
+        <style>
+            body {{ font-family: sans-serif; padding: 20px; }}
+            .main-layout {{ display: flex; gap: 20px; }}
+            .left-side {{ flex: 3; }}
+            .right-side {{ flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 10px; }}
+            .result-card {{ margin-bottom: 20px; }}
+            .result-image {{ width: 100px; height: 100px; object-fit: cover; border-radius: 8px; }}
+            .video-box {{ background: #eee; padding: 10px; border-left: 5px solid red; margin: 10px 0; }}
+        </style>
+    </head>
+    <body>
+        <form action="/search" method="get">
+            <input type="text" name="q" value="{q}" style="width: 300px; padding: 10px;">
+        </form>
+        <hr>
+        <div class="main-layout">
+            <div class="left-side">
+    '''
+
     for r in results:
-        html += f'''
-        <div style="margin-bottom:20px; text-align:left;">
-            <div style="font-size:12px; color:grey;">{r[1]}</div>
-            <a href="{r[5]}" target="_blank" style="font-size:18px; color:blue;">{r[2]}</a>
-            <p style="font-size:14px; color:#444;">{r[3][:150]}...</p>
-        </div>'''
-    return render_template_string(html + "</div>")
+        # r[1]=category, r[2]=source, r[3]=title, r[4]=content, r[5]=image_url, r[6]=url
+        # যদি ক্যাটাগরি ভিডিও হয় তবে আলাদা ডিজাইন
+        if "video" in r[1]:
+            html_output += f'''<div class="video-box">🎥 <b>{r[3]}</b> <br> <a href="{r[6]}">Watch Now</a></div>'''
+        else:
+            html_output += f'''
+                <div class="result-card">
+                    <img src="{r[5]}" class="result-image" style="float:left; margin-right:15px;">
+                    <a href="{r[6]}"><h3>{r[3]}</h3></a>
+                    <p>{r[4][:100]}...</p>
+                </div>
+            '''
+
+    html_output += '''
+            </div>
+            <div class="right-side">
+                <h3>Knowledge Panel</h3>
+                <p>আপনার সার্চ করা কিওয়ার্ড অনুযায়ী এখানে দারাজ বা উইকিপিডিয়ার তথ্য প্রদর্শিত হবে।</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    return render_template_string(html_output)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
