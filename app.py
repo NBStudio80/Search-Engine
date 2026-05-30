@@ -1,145 +1,94 @@
 from flask import Flask, request, render_template_string
-import sqlite3
 import requests
 from bs4 import BeautifulSoup
-import threading
-import os
 
 app = Flask(__name__)
 
-# ডাটাবেজ পাথ
-DB_PATH = os.path.join(os.getcwd(), "search.db")
+# দারাজ এফিলিয়েট সেটিংস
+AFFILIATE_ID = "163322452" 
 
-# ==========================================
-# ১. গ্লোবাল মেগা ক্রলার
-# ==========================================
-def global_background_crawl(query):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-
-    sources = [
-        {"name": "BBC News", "cat": "news", "url": f"https://www.bbc.com/search?q={query}"},
-        {"name": "CNN", "cat": "news", "url": f"https://edition.cnn.com/search?q={query}"},
-        {"name": "Reuters", "cat": "news", "url": f"https://www.reuters.com/site-search/?query={query}"},
-        {"name": "Prothom Alo", "cat": "news", "url": f"https://www.prothomalo.com/search?q={query}"},
-        {"name": "Amazon", "cat": "product", "url": f"https://www.amazon.com/s?k={query}"},
-        {"name": "Daraz (BD)", "cat": "product", "url": f"https://www.daraz.com.bd/catalog/?q={query}&aff_id=163322452"}
-    ]
-
-    for source in sources:
-        try:
-            res = requests.get(source["url"], headers=headers, timeout=5)
-            if res.status_code == 200:
-                soup = BeautifulSoup(res.text, "html.parser")
-                title = soup.title.string.strip() if soup.title else query
-                paragraphs = [p.text.strip() for p in soup.find_all('p') if p.text]
-                content = " ".join(paragraphs[:3])
-                
-                conn = sqlite3.connect(DB_PATH)
-                cur = conn.cursor()
-                cur.execute("""CREATE TABLE IF NOT EXISTS mega_search (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, source TEXT, title TEXT, content TEXT, image_url TEXT, target_url TEXT UNIQUE)""")
-                cur.execute("""INSERT OR IGNORE INTO mega_search (category, source, title, content, image_url, target_url)
-                    VALUES (?, ?, ?, ?, ?, ?)""", (source["cat"], source["name"], title, content, "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400", source["url"]))
-                conn.commit()
-                conn.close()
-                print(f"[⚡] Added: {source['name']}")
-        except Exception as e:
-            print(f"[-] Error in {source['name']}: {e}")
-
-# ==========================================
-# ২. সার্চ ইঞ্জিন ফাংশন
-# ==========================================
-def search_mega_engine(query):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS mega_search (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, source TEXT, title TEXT, content TEXT, image_url TEXT, target_url TEXT UNIQUE)")
-    
-    search_query = f"%{query}%"
-    cur.execute("SELECT category, source, title, content, image_url, target_url FROM mega_search WHERE title LIKE ? OR content LIKE ?", (search_query, search_query))
-    results = cur.fetchall()
-    conn.close()
-
-    if not results:
-        threading.Thread(target=global_background_crawl, args=(query,)).start()
-    return results
-
-# ==========================================
-# ৩. ইউজার ইন্টারফেস
-# ==========================================
-@app.route("/")
-def home():
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head><title>MegaEngine</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 100px 20px; background: #f9f9f9; }
-        .box { width: 500px; padding: 15px; border-radius: 25px; border: 1px solid #ccc; outline: none; }
-    </style></head>
-    <body>
-        <h1>🌐 Mega Engine Search</h1>
-        <form action="/search" method="get">
-            <input type="text" name="q" class="box" placeholder="Search..." required>
-        </form>
-    </body>
-    </html>
-    '''
+def fetch_daraz_data(query):
+    search_url = f"https://www.daraz.com.bd/catalog/?q={query.replace(' ', '+')}"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    try:
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        products = []
+        items = soup.select('.gridItem--Yd0NQ')[:6] 
+        for item in items:
+            title = item.select_one('.title--wFj93 a').text
+            img = item.select_one('img')['src']
+            link = "https:" + item.select_one('a')['href']
+            products.append({'title': title, 'img': img, 'link': f"{link}?aff_id={AFFILIATE_ID}"})
+        return products
+    except: return []
 
 @app.route("/search")
 def search_page():
     q = request.args.get("q", "")
-    results = search_mega_engine(q) # এটি আপনার ডাটাবেজ থেকে সব ডেটা আনবে
-
+    products = fetch_daraz_data(q)
+    
     html_output = f'''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>{q} - Mega Search</title>
+        <title>{q} - Google Style</title>
         <style>
-            body {{ font-family: sans-serif; padding: 20px; }}
-            .main-layout {{ display: flex; gap: 20px; }}
-            .left-side {{ flex: 3; }}
-            .right-side {{ flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 10px; }}
-            .result-card {{ margin-bottom: 20px; }}
-            .result-image {{ width: 100px; height: 100px; object-fit: cover; border-radius: 8px; }}
-            .video-box {{ background: #eee; padding: 10px; border-left: 5px solid red; margin: 10px 0; }}
+            body {{ font-family: arial,sans-serif; margin: 0; background: #fff; }}
+            .header {{ padding: 20px; border-bottom: 1px solid #dfe1e5; display: flex; align-items: center; }}
+            .logo {{ font-size: 24px; font-weight: bold; color: #4285f4; margin-right: 30px; }}
+            .search-input {{ width: 500px; padding: 12px 20px; border-radius: 25px; border: 1px solid #dfe1e5; outline: none; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }}
+            
+            .main-wrapper {{ display: flex; padding: 20px; gap: 40px; }}
+            .left-side {{ flex: 2; max-width: 700px; }}
+            .right-side {{ flex: 1; border: 1px solid #dfe1e5; padding: 20px; border-radius: 8px; height: fit-content; }}
+            
+            .product-card {{ display: flex; margin-bottom: 25px; align-items: center; }}
+            .product-card img {{ width: 100px; height: 100px; object-fit: contain; margin-right: 20px; border: 1px solid #eee; }}
+            .title {{ font-size: 18px; color: #1a0dab; text-decoration: none; }}
+            
+            .footer {{ text-align: center; padding: 20px; border-top: 1px solid #ddd; margin-top: 50px; color: #5f6368; }}
+            .footer a {{ margin: 0 10px; color: #5f6368; text-decoration: none; font-size: 14px; }}
         </style>
     </head>
     <body>
-        <form action="/search" method="get">
-            <input type="text" name="q" value="{q}" style="width: 300px; padding: 10px;">
-        </form>
-        <hr>
-        <div class="main-layout">
+        <div class="header">
+            <div class="logo">MegaEngine</div>
+            <form action="/search" method="get">
+                <input type="text" name="q" class="search-input" value="{q}">
+            </form>
+        </div>
+
+        <div class="main-wrapper">
             <div class="left-side">
     '''
 
-    for r in results:
-        # r[1]=category, r[2]=source, r[3]=title, r[4]=content, r[5]=image_url, r[6]=url
-        # যদি ক্যাটাগরি ভিডিও হয় তবে আলাদা ডিজাইন
-        if "video" in r[1]:
-            html_output += f'''<div class="video-box">🎥 <b>{r[3]}</b> <br> <a href="{r[6]}">Watch Now</a></div>'''
-        else:
-            html_output += f'''
-                <div class="result-card">
-                    <img src="{r[5]}" class="result-image" style="float:left; margin-right:15px;">
-                    <a href="{r[6]}"><h3>{r[3]}</h3></a>
-                    <p>{r[4][:100]}...</p>
+    for p in products:
+        html_output += f'''
+            <div class="product-card">
+                <img src="{p['img']}">
+                <div>
+                    <a href="{p['link']}" class="title" target="_blank">{p['title']}</a>
                 </div>
-            '''
+            </div>
+        '''
 
     html_output += '''
             </div>
             <div class="right-side">
-                <h3>Knowledge Panel</h3>
-                <p>আপনার সার্চ করা কিওয়ার্ড অনুযায়ী এখানে দারাজ বা উইকিপিডিয়ার তথ্য প্রদর্শিত হবে।</p>
+                <h3>Daraz Info Panel</h3>
+                <p>এখানে আপনার সার্চ করা পণ্যের নলেজ প্যানেল প্রদর্শিত হবে।</p>
             </div>
         </div>
-    </body>
-    </html>
+
+        <div class="footer">
+            <a href="#">Home</a> | <a href="#">About-Us</a> | <a href="#">Contact-Us</a><br>
+            <a href="#">Privacy Policy</a> | <a href="#">Terms & Conditions</a><br>
+            <a href="#">Disclaimer</a> | <a href="#">Sitemap</a>
+        </div>
+    </body></html>
     '''
     return render_template_string(html_output)
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=5000)
